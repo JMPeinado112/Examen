@@ -8,7 +8,11 @@ var simpleLevelPlan = `
 ......#++++++++++++#..
 ......##############..
 ......................`;
-
+var container = document.getElementById('container');
+setTimeout(function () {
+  container.classList.add('cerrar');
+  document.body.style.overflowY = "visible";// despueés de cargar le devolvemos el scroll
+}, 2000);
 var Level = class Level {
   constructor(plan) {
     let rows = plan.trim().split("\n").map(l => [...l]);
@@ -138,7 +142,7 @@ var Bola = class Bola {
   static create(pos, ch) {
     if (ch == "l") {
       return new Bola(pos, new Vec(35, 0), pos);
-    }else if (ch == "i") {
+    } else if (ch == "i") {
       return new Bola(pos, new Vec(-35, 0), pos);
     }
   }
@@ -168,7 +172,7 @@ var Laser = class Laser {
 
   static create(pos, ch) {
     if (ch == "a") {
-      return new Laser(pos, new Vec(0,21), pos);
+      return new Laser(pos, new Vec(0, 21), pos);
     }
   }
 }
@@ -198,7 +202,7 @@ var Laser2 = class Laser2 {
   static create(pos, ch) {
     if (ch == "d") {
       return new Laser2(pos, new Vec(21, 0), pos);
-    }    else if (ch == "g") {
+    } else if (ch == "g") {
       return new Laser2(pos, new Vec(10, 12));
     }
     else if (ch == "h") {
@@ -656,9 +660,9 @@ Player.prototype.update = function (time, state, keys) {
   }
   return new Player(pos, new Vec(xSpeed, ySpeed));
 };
-
 function trackKeys(keys) {
   let down = Object.create(null);
+
   function track(event) {
     if (keys.includes(event.key)) {
       down[event.key] = event.type == "keydown";
@@ -667,12 +671,12 @@ function trackKeys(keys) {
   }
   window.addEventListener("keydown", track);
   window.addEventListener("keyup", track);
+  down.unregister = () => {
+    window.removeEventListener("keydown", track);
+    window.removeEventListener("keyup", track);
+  };
   return down;
 }
-
-var arrowKeys =
-  trackKeys(["ArrowLeft", "ArrowRight", "ArrowUp"]);
-
 function runAnimation(frameFunc) {
   let lastTime = null;
   function frame(time) {
@@ -685,13 +689,33 @@ function runAnimation(frameFunc) {
   }
   requestAnimationFrame(frame);
 }
-
 function runLevel(level, Display) {
+
   let display = new Display(document.body, level);
   let state = State.start(level);
   let ending = 1;
+  let pausa = "start";
+
   return new Promise(resolve => {
-    runAnimation(time => {
+    function escHandler(event) {
+      if (event.key != "Escape") return;
+      event.preventDefault();
+      if (pausa == "stop") {
+        pausa = "start";
+        runAnimation(frame);
+      } else if (pausa == "start") {
+        pausa = "stop";
+      } else {
+        pausa = "start"
+      }
+    }
+    window, addEventListener("keydown", escHandler);
+    let arrowKeys = trackKeys(["ArrowLeft", "ArrowRight", "ArrowUp"]);
+
+    function frame(time) {
+      if (pausa == "stop") {
+        return false;
+      }
       state = state.update(time, arrowKeys);
       display.syncState(state);
       if (state.status == "playing") {
@@ -701,12 +725,15 @@ function runLevel(level, Display) {
         return true;
       } else {
         display.clear();
+        window.removeEventListener("keydown", escHandler);
+        arrowKeys.unregister();
         resolve(state.status);
         return false;
       }
-    });
+    }
+    runAnimation(frame);
   });
-}
+};
 
 async function runGame(plans, Display) {
   this.lives = 100;
@@ -724,13 +751,20 @@ async function runGame(plans, Display) {
     }
 
   }
-  if (lives > 0) {
-    console.log("You Win!");
-    document.location.reload();
+  if (lives <= 0) {
+    show('loser');
   }
   else {
-    console.log("Game Over");
-    document.location.reload();
+    show('winner');
   }
 
+}
+
+function oculto(id) {
+  var elemento = document.getElementById(id);
+  elemento.style.display = "none";
+}
+
+function show(id) {
+  document.getElementById(id).style.display = 'block';
 }
